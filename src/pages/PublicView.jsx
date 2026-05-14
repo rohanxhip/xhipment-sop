@@ -1,368 +1,628 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { db } from '../lib/supabase'
-import { CATEGORIES } from '../data/initialData'
 import { useAuth } from '../App'
 
-const css = `
-  .pv-app{display:flex;height:100vh;overflow:hidden}
-  .pv-sidebar{width:250px;min-width:250px;background:var(--bg1);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto}
-  .pv-logo{padding:22px 18px 18px;border-bottom:1px solid var(--border)}
-  .pv-wordmark{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;color:var(--gold2);line-height:1}
-  .pv-sub{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-top:3px}
-  .pv-badge{display:inline-flex;align-items:center;gap:5px;background:var(--gold-dim);border:1px solid rgba(232,148,10,0.2);border-radius:4px;padding:2px 8px;margin-top:7px;font-size:10px;color:var(--gold);font-family:'IBM Plex Mono',monospace;letter-spacing:1px}
-  .pv-dot{width:5px;height:5px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
-  .pv-stats{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:14px 16px;border-bottom:1px solid var(--border)}
-  .pv-stat{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 10px}
-  .pv-stat-val{font-family:'IBM Plex Mono',monospace;font-size:18px;font-weight:500;color:var(--text1);line-height:1}
-  .pv-stat-val.g{color:var(--gold2)}
-  .pv-stat-lbl{font-size:9px;color:var(--text3);margin-top:3px;text-transform:uppercase;letter-spacing:.5px}
-  .pv-sec-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--text3);padding:14px 16px 6px;font-family:'IBM Plex Mono',monospace}
-  .pv-nav{display:flex;align-items:center;gap:9px;padding:8px 16px;cursor:pointer;transition:background .15s;border-left:2px solid transparent;font-size:13px;color:var(--text2)}
-  .pv-nav:hover{background:var(--bg2);color:var(--text1)}
-  .pv-nav.on{background:var(--gold-dim);border-left-color:var(--gold);color:var(--gold2)}
-  .pv-nav-ct{margin-left:auto;background:var(--bg3);border:1px solid var(--border);border-radius:4px;font-family:'IBM Plex Mono',monospace;font-size:10px;padding:1px 6px;color:var(--text3)}
-  .pv-nav.on .pv-nav-ct{background:var(--gold-dim);border-color:rgba(232,148,10,.3);color:var(--gold)}
-  .pv-admin-btn{margin:auto 16px 16px;display:flex;align-items:center;justify-content:center;gap:7px;padding:9px;border-radius:6px;background:var(--bg3);border:1px solid var(--border2);color:var(--text2);font-size:12px;font-weight:500;cursor:pointer;transition:all .15s;text-decoration:none}
-  .pv-admin-btn:hover{background:var(--gold-dim);border-color:rgba(232,148,10,.35);color:var(--gold)}
-  .pv-main{flex:1;display:flex;flex-direction:column;min-width:0;overflow:hidden}
-  .pv-topbar{padding:0 24px;height:58px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:14px;background:var(--bg1);flex-shrink:0}
-  .pv-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--text1);white-space:nowrap}
-  .pv-title span{color:var(--gold)}
-  .pv-div{width:1px;height:18px;background:var(--border)}
-  .pv-search-wrap{flex:1;max-width:360px;position:relative}
-  .pv-search{width:100%;background:var(--bg2);border:1px solid var(--border);color:var(--text1);padding:7px 11px 7px 34px;border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif}
-  .pv-search-ico{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);font-size:13px;pointer-events:none}
-  .pv-chips{display:flex;gap:5px;margin-left:auto}
-  .pv-chip{padding:5px 11px;border-radius:5px;font-size:11px;cursor:pointer;border:1px solid var(--border);background:var(--bg2);color:var(--text2);transition:all .15s;font-family:'IBM Plex Mono',monospace}
-  .pv-chip:hover{border-color:var(--border2);color:var(--text1)}
-  .pv-chip.on{background:var(--gold-dim);border-color:rgba(232,148,10,.35);color:var(--gold)}
-  .pv-chip.ac{background:var(--success-dim);border-color:rgba(15,181,122,.35);color:var(--success)}
-  .pv-chip.rv{background:var(--warn-dim);border-color:rgba(240,165,0,.35);color:var(--warn)}
-  .pv-body{flex:1;display:flex;min-height:0;overflow:hidden}
-  .pv-list{flex:1;min-width:0;overflow-y:auto;padding:18px 20px}
-  .pv-list-hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:13px}
-  .pv-ct-lbl{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1px}
-  .pv-card{background:var(--bg1);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:9px;cursor:pointer;transition:all .15s;position:relative;overflow:hidden}
-  .pv-card::before{content:'';position:absolute;left:0;top:0;bottom:0;width:3px;background:var(--border);transition:background .15s}
-  .pv-card.crit::before{background:var(--danger)}
-  .pv-card.high::before{background:var(--warn)}
-  .pv-card.med::before{background:var(--info)}
-  .pv-card:hover{border-color:var(--border2);background:var(--bg2)}
-  .pv-card.sel{border-color:rgba(232,148,10,.4);background:var(--bg2)}
-  .pv-card.sel::before{background:var(--gold)}
-  .pv-card-hd{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
-  .pv-card-id{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1px;margin-bottom:3px}
-  .pv-card-title{font-size:14px;font-weight:600;color:var(--text1);line-height:1.3}
-  .pv-card-desc{font-size:12px;color:var(--text3);margin-top:5px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-  .pv-card-ft{display:flex;align-items:center;gap:6px;margin-top:10px;flex-wrap:wrap}
-  .badge{display:inline-flex;align-items:center;gap:3px;padding:2px 7px;border-radius:4px;font-size:10px;font-weight:500;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px;white-space:nowrap}
-  .b-ac{background:var(--success-dim);color:var(--success);border:1px solid rgba(15,181,122,.25)}
-  .b-rv{background:var(--warn-dim);color:var(--warn);border:1px solid rgba(240,165,0,.25)}
-  .b-ar{background:var(--bg3);color:var(--text3);border:1px solid var(--border)}
-  .b-cr{background:var(--danger-dim);color:var(--danger);border:1px solid rgba(232,64,64,.25)}
-  .b-hi{background:var(--warn-dim);color:var(--warn);border:1px solid rgba(240,165,0,.25)}
-  .b-me{background:var(--info-dim);color:var(--info);border:1px solid rgba(74,142,232,.25)}
-  .b-ct{background:var(--cyan-dim);color:var(--cyan);border:1px solid rgba(18,181,204,.2)}
-  .b-vr{background:var(--bg3);color:var(--text2);border:1px solid var(--border)}
-  .pv-owner{font-size:11px;color:var(--text3);display:flex;align-items:center;gap:5px;margin-left:auto;flex-shrink:0}
-  .av-xs{width:20px;height:20px;border-radius:50%;background:var(--bg3);border:1px solid var(--border2);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:var(--text2)}
-  .pv-detail{width:400px;min-width:400px;background:var(--bg1);border-left:1px solid var(--border);overflow-y:auto;display:flex;flex-direction:column;transition:width .2s,min-width .2s;animation:slideIn .2s ease}
-  .pv-detail.closed{width:0;min-width:0;overflow:hidden}
-  .pv-dtop{padding:14px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:var(--bg1);z-index:5}
-  .pv-did{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:1px}
-  .close-btn{width:26px;height:26px;border-radius:5px;background:var(--bg2);border:1px solid var(--border);color:var(--text2);cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .15s}
-  .close-btn:hover{background:var(--bg3);color:var(--text1)}
-  .pv-dbody{padding:18px;flex:1}
-  .pv-dtitle{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:1.5px;color:var(--text1);line-height:1.1;margin-bottom:10px}
-  .pv-dbadges{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:14px}
-  .pv-ddesc{font-size:12px;color:var(--text2);line-height:1.6;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:11px 13px;margin-bottom:16px}
-  .pv-dmeta{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-bottom:16px}
-  .pv-mi{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:9px 11px}
-  .pv-ml{font-size:9px;color:var(--text3);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;font-family:'IBM Plex Mono',monospace}
-  .pv-mv{font-size:12px;color:var(--text1);font-weight:500}
-  .sec-title{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--text3);letter-spacing:2px;text-transform:uppercase;margin-bottom:10px;display:flex;align-items:center;gap:8px}
-  .sec-title::after{content:'';flex:1;height:1px;background:var(--border)}
-  .prog-lbl{display:flex;justify-content:space-between;font-size:10px;color:var(--text3);margin-bottom:5px;font-family:'IBM Plex Mono',monospace}
-  .prog-track{height:3px;background:var(--bg3);border-radius:2px;overflow:hidden;margin-bottom:16px}
-  .prog-fill{height:100%;background:var(--gold);border-radius:2px;transition:width .4s ease}
-  .steps-list{position:relative}
-  .steps-list::before{content:'';position:absolute;left:15px;top:24px;bottom:24px;width:1px;background:var(--border);z-index:0}
-  .step-item{display:flex;gap:12px;margin-bottom:10px;position:relative;cursor:pointer}
-  .step-num{width:30px;height:30px;border-radius:50%;flex-shrink:0;border:1px solid var(--border);background:var(--bg1);display:flex;align-items:center;justify-content:center;font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:500;color:var(--text3);position:relative;z-index:1;transition:all .15s}
-  .step-item.on .step-num{background:var(--gold);border-color:var(--gold2);color:#000;font-weight:700}
-  .step-item.done .step-num{background:var(--success-dim);border-color:rgba(15,181,122,.4);color:var(--success)}
-  .step-body{flex:1;background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;transition:border-color .15s}
-  .step-item:hover .step-body{border-color:var(--border2)}
-  .step-item.on .step-body{border-color:rgba(232,148,10,.35);background:rgba(232,148,10,.04)}
-  .step-hd{display:flex;align-items:center;justify-content:space-between;gap:7px;margin-bottom:5px}
-  .step-title{font-size:12px;font-weight:600;color:var(--text1)}
-  .step-dur{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--gold);background:var(--gold-dim);border:1px solid rgba(232,148,10,.2);border-radius:3px;padding:1px 6px;white-space:nowrap}
-  .step-dept{font-family:'IBM Plex Mono',monospace;font-size:9px;color:var(--cyan);background:var(--cyan-dim);border:1px solid rgba(18,181,204,.15);border-radius:3px;padding:1px 6px;margin-bottom:5px;display:inline-block}
-  .step-desc{font-size:11px;color:var(--text2);line-height:1.5}
-  .tag-row{display:flex;gap:4px;flex-wrap:wrap;margin-top:14px}
-  .tag{padding:3px 8px;border-radius:20px;font-size:10px;background:var(--bg3);border:1px solid var(--border);color:var(--text3);font-family:'IBM Plex Mono',monospace}
-  .pv-empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:50px 24px;text-align:center}
-  .pv-empty-ico{font-size:42px;margin-bottom:14px;opacity:.2}
-  .pv-empty-title{font-family:'Bebas Neue',sans-serif;font-size:20px;letter-spacing:2px;color:var(--text2);margin-bottom:6px}
-  .pv-empty-sub{font-size:12px;color:var(--text3);line-height:1.5}
-  .amend-item{background:var(--bg2);border:1px solid var(--border);border-radius:6px;padding:10px 12px;margin-bottom:8px}
-  .amend-ver{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--gold);margin-bottom:3px}
-  .amend-sum{font-size:12px;color:var(--text1);margin-bottom:4px}
-  .amend-meta{font-size:10px;color:var(--text3)}
-`
+// ─── OCEAN LIFECYCLE ──────────────────────────────────────────────────────────
+const OCEAN_STAGES = [
+  {
+    id: 'booking', label: 'Booking Confirmation', short: 'Booking', icon: '📋', color: '#E8940A',
+    desc: 'Rate confirmation, space booking, liner selection & amendment process',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-01', title:'Container Booking SOP', owner:'Jaideep', priority:'critical', tags:['MAERSK','OOCL','CMA'], link:'https://docs.google.com/document/d/container-booking' },
+        { id:'SOP-OCN-IN-02', title:'India to US Ocean Quoting Process SOP', owner:'Jaideep', priority:'critical', tags:['LCL','FCL','pricing'], link:'' },
+        { id:'SOP-OCN-IN-03', title:'Port of Discharge Estimator SOP', owner:'Jaideep', priority:'high', tags:['POD','routing'], link:'' },
+        { id:'SOP-OCN-IN-04', title:'Liner Issue / Exception Handling SOP', owner:'Jaideep', priority:'high', tags:['exception','liner'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-01', title:'Container Booking SOP — UK Export', owner:'Jaideep', priority:'critical', tags:['UK','FCL','booking'], link:'' },
+        { id:'SOP-OCN-UK-02', title:'UK2US LCL Calculator SOP', owner:'Jaideep', priority:'high', tags:['LCL','pricing'], link:'' },
+        { id:'SOP-OCN-UK-03', title:'UK Pickup Calculator SOP', owner:'Jaideep', priority:'high', tags:['pickup','pricing'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-01', title:'Container Booking SOP — DE Export', owner:'Jaideep', priority:'critical', tags:['DE','FCL','booking'], link:'' },
+        { id:'SOP-OCN-DE-02', title:'DE2US LCL Calculator SOP', owner:'Jaideep', priority:'high', tags:['LCL','pricing'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'documents', label: 'Document Verification', short: 'Doc Verify', icon: '📄', color: '#4A8EE8',
+    desc: 'Commercial invoice, packing list, AD code, FBA IDs, cargo insurance',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-05', title:'Export Document Collection & Verification SOP', owner:'Rohan', priority:'critical', tags:['verification','IN2US'], link:'https://docs.google.com/document/d/export-doc-verification' },
+        { id:'SOP-OCN-IN-06', title:'Document Verification Checklist', owner:'Rohan', priority:'critical', tags:['checklist'], link:'' },
+        { id:'SOP-OCN-IN-07', title:'AD Code & IFSC Registration Guide', owner:'Rohan', priority:'critical', tags:['ICEGATE','AD-code'], link:'' },
+        { id:'SOP-OCN-IN-08', title:'Marking & Labeling Guide', owner:'Rohan', priority:'high', tags:['packaging','labels'], link:'' },
+        { id:'SOP-OCN-IN-09', title:'FBA ID and PO ID Collection Guide', owner:'Rohan', priority:'critical', tags:['Amazon','FBA','Walmart'], link:'' },
+        { id:'SOP-OCN-IN-10', title:'Cargo Insurance Procurement Guide', owner:'Rohan', priority:'medium', tags:['insurance'], link:'' },
+        { id:'SOP-OCN-IN-11', title:'Document Verification Exception Handling Guide', owner:'Rohan', priority:'high', tags:['FAQ','exception'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-04', title:'New Customer Document Verification SOP', owner:'Rohan', priority:'critical', tags:['verification','new-customer'], link:'' },
+        { id:'SOP-OCN-UK-05', title:'Existing Customer Document Verification SOP', owner:'Rohan', priority:'critical', tags:['verification','existing'], link:'' },
+        { id:'SOP-OCN-UK-06', title:'EORI Number Procurement Guide', owner:'Rohan', priority:'high', tags:['EORI','UK','compliance'], link:'' },
+        { id:'SOP-OCN-UK-07', title:'Marking & Labeling Guide SOP', owner:'Rohan', priority:'high', tags:['packaging','labels'], link:'' },
+        { id:'SOP-OCN-UK-08', title:'FBA ID and PO ID Collection Guide', owner:'Rohan', priority:'critical', tags:['Amazon','FBA'], link:'' },
+        { id:'SOP-OCN-UK-09', title:'Document Verification Exception Handling Guide', owner:'Rohan', priority:'high', tags:['FAQ','exception'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-03', title:'New Customer Document Verification SOP — DE', owner:'Rohan', priority:'critical', tags:['verification','DE'], link:'' },
+        { id:'SOP-OCN-DE-04', title:'Existing Customer Document Verification SOP — DE', owner:'Rohan', priority:'critical', tags:['verification','DE'], link:'' },
+        { id:'SOP-OCN-DE-05', title:'EORI Number Procurement Guide', owner:'Rohan', priority:'high', tags:['EORI','DE','compliance'], link:'' },
+        { id:'SOP-OCN-DE-06', title:'Cargo Insurance Guide — DE', owner:'Rohan', priority:'medium', tags:['insurance','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'pickup', label: 'Pickup / Drop Off', short: 'Pickup', icon: '🚚', color: '#0FB57A',
+    desc: 'Cargo pickup from shipper warehouse, drop-off at CFS',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-12', title:'Ocean Pickup Operations SOP', owner:'Rohan', priority:'critical', tags:['pickup','vendor'], link:'' },
+        { id:'SOP-OCN-IN-13', title:'Drop Off Operations Guide', owner:'Rohan', priority:'critical', tags:['CFS','drop-off'], link:'' },
+        { id:'SOP-OCN-IN-14', title:'Pickup & Drop Off Exception Handling Guide', owner:'Rohan', priority:'high', tags:['FAQ','exception'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-10', title:'Pick Up Operations Guide — UK', owner:'Rohan', priority:'critical', tags:['pickup','UK'], link:'' },
+        { id:'SOP-OCN-UK-11', title:'Drop Off Operations Guide — UK', owner:'Rohan', priority:'critical', tags:['drop-off','UK'], link:'' },
+        { id:'SOP-OCN-UK-12', title:'Pickup & Drop Off Exception Handling Guide', owner:'Rohan', priority:'high', tags:['FAQ','exception'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-07', title:'Pick Up Operations Guide — DE', owner:'Rohan', priority:'critical', tags:['pickup','DE'], link:'' },
+        { id:'SOP-OCN-DE-08', title:'Drop Off Operations Guide — DE', owner:'Rohan', priority:'critical', tags:['drop-off','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'carting', label: 'Carting & Export Clearance', short: 'Carting', icon: '🏭', color: '#9B59B6',
+    desc: 'CFS inbound, checklist validation, customs export clearance, AMS / ISF filing',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-15', title:'Checklist Generation & CFS Inbound SOP', owner:'Rohan', priority:'critical', tags:['checklist','CFS'], link:'' },
+        { id:'SOP-OCN-IN-16', title:'Export Clearance SOP', owner:'Rohan', priority:'critical', tags:['customs','clearance'], link:'' },
+        { id:'SOP-OCN-IN-17', title:'AMS Submission Process — TradeTech', owner:'Rohan', priority:'critical', tags:['AMS','TradeTech'], link:'' },
+        { id:'SOP-OCN-IN-18', title:'ISF Submission Process — TradeTech', owner:'Rohan', priority:'critical', tags:['ISF','TradeTech'], link:'' },
+        { id:'SOP-OCN-IN-19', title:'AMS / ISF Validation Guide', owner:'Rohan', priority:'critical', tags:['AMS','ISF','validation'], link:'' },
+        { id:'SOP-OCN-IN-20', title:'Export Operations Issue Handling Guide', owner:'Rohan', priority:'high', tags:['FAQ','exception'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-13', title:'Container / Exports Planning SOP — UK', owner:'Rohan', priority:'high', tags:['planning','UK'], link:'' },
+        { id:'SOP-OCN-UK-14', title:'Export Clearance SOP — UK', owner:'Rohan', priority:'critical', tags:['clearance','UK'], link:'' },
+        { id:'SOP-OCN-UK-15', title:'AMS Submission Process — TradeTech', owner:'Rohan', priority:'critical', tags:['AMS','TradeTech'], link:'' },
+        { id:'SOP-OCN-UK-16', title:'ISF Submission Process — TradeTech', owner:'Rohan', priority:'critical', tags:['ISF','TradeTech'], link:'' },
+        { id:'SOP-OCN-UK-17', title:'Export Operations Issue Handling Guide', owner:'Rohan', priority:'high', tags:['FAQ'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-09', title:'Container / Exports Planning SOP — DE', owner:'Rohan', priority:'high', tags:['planning','DE'], link:'' },
+        { id:'SOP-OCN-DE-10', title:'Export Clearance SOP — DE', owner:'Rohan', priority:'critical', tags:['clearance','DE'], link:'' },
+        { id:'SOP-OCN-DE-11', title:'AMS / ISF Submission Process', owner:'Rohan', priority:'critical', tags:['AMS','ISF'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'stuffing', label: 'Empty Container Pickup & Stuffing', short: 'Stuffing', icon: '📦', color: '#E67E22',
+    desc: 'Empty container pickup from depot, loading plan, stuffing & sealing',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-21', title:'Container / Exports Planning SOP', owner:'Rohan', priority:'high', tags:['planning','FCL'], link:'' },
+        { id:'SOP-OCN-IN-22', title:'Container Loading Plan Generation SOP', owner:'Rohan', priority:'high', tags:['loading','stuffing'], link:'' },
+        { id:'SOP-OCN-IN-23', title:'INNTRA Shipping Instructions Filing Guide', owner:'Rohan', priority:'critical', tags:['SI','INNTRA','liner'], link:'' },
+        { id:'SOP-OCN-IN-24', title:'House Bill of Lading Creation Process', owner:'Rohan', priority:'critical', tags:['HBL','documentation'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-18', title:'Container Loading Plan Generation SOP — UK', owner:'Rohan', priority:'high', tags:['loading','UK'], link:'' },
+        { id:'SOP-OCN-UK-19', title:'House Bill of Lading Creation Process', owner:'Rohan', priority:'critical', tags:['HBL'], link:'' },
+        { id:'SOP-OCN-UK-20', title:'Entire Export Operations Workflow — UK', owner:'Rohan', priority:'high', tags:['workflow','UK'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-12', title:'Container Loading Plan Generation SOP — DE', owner:'Rohan', priority:'high', tags:['loading','DE'], link:'' },
+        { id:'SOP-OCN-DE-13', title:'House Bill of Lading Creation Process — DE', owner:'Rohan', priority:'critical', tags:['HBL','DE'], link:'' },
+        { id:'SOP-OCN-DE-14', title:'Entire Export Operations Workflow — DE', owner:'Rohan', priority:'high', tags:['workflow','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'sailout', label: 'Container Gate In & Sail Out', short: 'Sail Out', icon: '🚢', color: '#12B5CC',
+    desc: 'Gate-in confirmation, BL release, freight release, sailing milestone tracking',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-25', title:'SWB Release & Freight Release SOP', owner:'Farhan', priority:'critical', tags:['BL','freight-release'], link:'' },
+        { id:'SOP-OCN-IN-26', title:'OOCL BL & Freight Release Process', owner:'Farhan', priority:'critical', tags:['OOCL'], link:'' },
+        { id:'SOP-OCN-IN-27', title:'CMA CGM BL / Freight Release', owner:'Farhan', priority:'critical', tags:['CMA-CGM'], link:'' },
+        { id:'SOP-OCN-IN-28', title:'CP World BL / Freight Release Process', owner:'Farhan', priority:'high', tags:['CP-World'], link:'' },
+        { id:'SOP-OCN-IN-29', title:'Noble Shipping BL / Freight Release', owner:'Farhan', priority:'high', tags:['Noble'], link:'' },
+        { id:'SOP-OCN-IN-30', title:'Liner Origin D+D Information SOP', owner:'Jaideep', priority:'high', tags:['demurrage','detention'], link:'' },
+        { id:'SOP-OCN-IN-31', title:'Customs & Freight Release Check Guide', owner:'Raunak', priority:'critical', tags:['freight-release','terminal'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-21', title:'SWB Release & Freight Release SOP', owner:'Farhan', priority:'critical', tags:['BL','freight-release'], link:'' },
+        { id:'SOP-OCN-UK-22', title:'Liner Origin D+D Information SOP — UK', owner:'Jaideep', priority:'high', tags:['demurrage','detention'], link:'' },
+        { id:'SOP-OCN-UK-23', title:'Customs & Freight Release Check Guide', owner:'Raunak', priority:'critical', tags:['freight-release'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-15', title:'SWB Release & Freight Release SOP', owner:'Farhan', priority:'critical', tags:['BL','freight-release'], link:'' },
+        { id:'SOP-OCN-DE-16', title:'Liner Origin D+D Information SOP — DE', owner:'Jaideep', priority:'high', tags:['demurrage','DE'], link:'' },
+        { id:'SOP-OCN-DE-17', title:'Customs & Freight Release Check Guide', owner:'Raunak', priority:'critical', tags:['freight-release'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'clearance', label: 'Import Clearance', short: 'Import Clear', icon: '🛃', color: '#E84040',
+    desc: 'Document verification, 7501 entry filing, customs duty, freight & customs release',
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-32', title:'Ocean Import Clearance SOP', owner:'Raunak', priority:'critical', tags:['import','7501','customs'], link:'' },
+        { id:'SOP-OCN-IN-33', title:'Import Clearance Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','exception'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-24', title:'Import Clearance SOP — UK', owner:'Raunak', priority:'critical', tags:['import','UK','7501'], link:'' },
+        { id:'SOP-OCN-UK-25', title:'Import Clearance Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','UK'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-18', title:'Import Clearance SOP — DE', owner:'Raunak', priority:'critical', tags:['import','DE','7501'], link:'' },
+        { id:'SOP-OCN-DE-19', title:'Import Clearance Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'delivery', label: 'Delivery', short: 'Delivery', icon: '🏁', color: '#0FB57A',
+    desc: 'Direct drayage to FBA / Walmart warehouse, or transloading + last mile delivery',
+    subStages: ['Direct Drayage', 'Transloading'],
+    sops: {
+      'IN2US': [
+        { id:'SOP-OCN-IN-34', title:'Drayage Delivery Operations SOP — IN to US', owner:'Raunak', priority:'critical', tags:['drayage','IN2US'], link:'' },
+        { id:'SOP-OCN-IN-35', title:'Drayage Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','drayage'], link:'' },
+        { id:'SOP-OCN-IN-36', title:'Transloading / Storage SOP', owner:'Raunak', priority:'critical', tags:['transloading','storage'], link:'' },
+        { id:'SOP-OCN-IN-37', title:'Transloading Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','transloading'], link:'' },
+        { id:'SOP-OCN-IN-38', title:'Amazon Freight Booking Guidelines', owner:'Raunak', priority:'critical', tags:['Amazon','FBA'], link:'' },
+        { id:'SOP-OCN-IN-39', title:'XPO Truck Booking Guide', owner:'Raunak', priority:'critical', tags:['XPO','truck'], link:'' },
+        { id:'SOP-OCN-IN-40', title:'Walmart Appointment Scheduling Guide', owner:'Raunak', priority:'high', tags:['Walmart','appointment'], link:'' },
+        { id:'SOP-OCN-IN-41', title:'Amazon FBA ID / FC Redirection Guide', owner:'Raunak', priority:'critical', tags:['Amazon','FBA','redirect'], link:'' },
+        { id:'SOP-OCN-IN-42', title:'Everlast Inbound / Outbound Process', owner:'Raunak', priority:'medium', tags:['Everlast','warehouse'], link:'' },
+        { id:'SOP-OCN-IN-43', title:'FedEx Label Creation & Claim Process', owner:'Raunak', priority:'medium', tags:['FedEx','label'], link:'' },
+        { id:'SOP-OCN-IN-44', title:'Container Detention Calculation SOP', owner:'Raunak', priority:'high', tags:['detention','demurrage'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-OCN-UK-26', title:'Drayage Delivery Operations SOP — UK to US', owner:'Raunak', priority:'critical', tags:['drayage','UK2US'], link:'' },
+        { id:'SOP-OCN-UK-27', title:'Drayage Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','drayage'], link:'' },
+        { id:'SOP-OCN-UK-28', title:'Transloading / Storage SOP', owner:'Raunak', priority:'critical', tags:['transloading','UK'], link:'' },
+        { id:'SOP-OCN-UK-29', title:'Amazon Freight Booking Guidelines', owner:'Raunak', priority:'critical', tags:['Amazon','FBA'], link:'' },
+        { id:'SOP-OCN-UK-30', title:'Walmart Appointment Scheduling Guide', owner:'Raunak', priority:'high', tags:['Walmart'], link:'' },
+        { id:'SOP-OCN-UK-31', title:'Partner Portal Destination Handling SOP', owner:'Mustafa', priority:'medium', tags:['partner','portal'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-OCN-DE-20', title:'Drayage Delivery Operations SOP — DE to US', owner:'Raunak', priority:'critical', tags:['drayage','DE2US'], link:'' },
+        { id:'SOP-OCN-DE-21', title:'Drayage Issue Handling Guide', owner:'Raunak', priority:'high', tags:['FAQ','drayage'], link:'' },
+        { id:'SOP-OCN-DE-22', title:'Transloading / Storage SOP', owner:'Raunak', priority:'critical', tags:['transloading','DE'], link:'' },
+        { id:'SOP-OCN-DE-23', title:'Amazon Freight Booking Guidelines', owner:'Raunak', priority:'critical', tags:['Amazon','FBA'], link:'' },
+        { id:'SOP-OCN-DE-24', title:'Walmart Appointment Scheduling Guide', owner:'Raunak', priority:'high', tags:['Walmart'], link:'' },
+      ],
+    }
+  },
+]
 
-function getInitials(name) {
-  return name?.split(' ').map(p => p[0]).join('').toUpperCase() || '?'
-}
-function fmtDate(d) {
-  if (!d) return '—'
-  return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })
-}
-function getCatLabel(cat) {
-  return CATEGORIES.find(c => c.id === cat)?.label || cat
+// ─── AIR LIFECYCLE ────────────────────────────────────────────────────────────
+const AIR_STAGES = [
+  {
+    id: 'booking', label: 'Booking Confirmation', short: 'Booking', icon: '📋', color: '#E8940A',
+    desc: 'Rate confirmation, ICL / FedEx / disaggregated booking, space allocation',
+    sops: {
+      'IN2US': [
+        { id:'SOP-AIR-IN-01', title:'FedEx IN2US Quoting Tool SOP', owner:'Jaideep', priority:'critical', tags:['FedEx','quoting','ICL'], link:'' },
+        { id:'SOP-AIR-IN-02', title:'Disaggregated Calculator — IN2US Air SOP', owner:'Jaideep', priority:'critical', tags:['disaggregated','pricing'], link:'' },
+        { id:'SOP-AIR-IN-03', title:'Buy Rates Updation SOP', owner:'Jaideep', priority:'high', tags:['buy-rates','procurement'], link:'' },
+        { id:'SOP-AIR-IN-04', title:'Vendor Onboarding SOP', owner:'Jaideep', priority:'high', tags:['vendor','onboarding'], link:'' },
+        { id:'SOP-AIR-IN-05', title:'Pricing Support — Ticket Handling SOP', owner:'Jaideep', priority:'medium', tags:['pricing','support'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-AIR-UK-01', title:'UK to US Air CS Tracker SOP', owner:'Jaideep', priority:'critical', tags:['UK','quoting','CS-tracker'], link:'' },
+        { id:'SOP-AIR-UK-02', title:'Buy Rates Updation SOP — UK', owner:'Jaideep', priority:'high', tags:['buy-rates','UK'], link:'' },
+        { id:'SOP-AIR-UK-03', title:'Vendor Payments SOP', owner:'Farhan', priority:'high', tags:['payments','vendor'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-AIR-DE-01', title:'DE2US Air Pricing SOP', owner:'Jaideep', priority:'critical', tags:['DE','quoting'], link:'' },
+        { id:'SOP-AIR-DE-02', title:'Vendor Payments SOP — DE', owner:'Farhan', priority:'high', tags:['payments','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'documents', label: 'Document Verification', short: 'Doc Verify', icon: '📄', color: '#4A8EE8',
+    desc: 'Commercial invoice, packing list, AD code, FBA IDs, FedEx shipping label',
+    sops: {
+      'IN2US': [
+        { id:'SOP-AIR-IN-06', title:'New Customer Document Verification SOP', owner:'Shreyas', priority:'critical', tags:['verification','new-customer'], link:'' },
+        { id:'SOP-AIR-IN-07', title:'AD Code & IFSC Registration Guide', owner:'Shreyas', priority:'critical', tags:['ICEGATE','AD-code'], link:'' },
+        { id:'SOP-AIR-IN-08', title:'FedEx Shipping Label Creation SOP', owner:'Shreyas', priority:'critical', tags:['FedEx','label'], link:'' },
+        { id:'SOP-AIR-IN-09', title:'Document Verification Exception Handling Guide', owner:'Shreyas', priority:'high', tags:['FAQ','exception'], link:'' },
+        { id:'SOP-AIR-IN-10', title:'Marking & Labeling Guide SOP', owner:'Shreyas', priority:'high', tags:['packaging','labels'], link:'' },
+        { id:'SOP-AIR-IN-11', title:'Cargo Insurance Guide', owner:'Shreyas', priority:'medium', tags:['insurance'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-AIR-UK-04', title:'New Customer Document Verification SOP — UK', owner:'Shreyas', priority:'critical', tags:['verification','UK'], link:'' },
+        { id:'SOP-AIR-UK-05', title:'Document Verification Exception Handling Guide', owner:'Shreyas', priority:'high', tags:['FAQ','UK'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-AIR-DE-03', title:'New Customer Document Verification SOP — DE', owner:'Shreyas', priority:'critical', tags:['verification','DE'], link:'' },
+        { id:'SOP-AIR-DE-04', title:'AD Code & IFSC Registration Guide', owner:'Shreyas', priority:'critical', tags:['AD-code','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'pickup', label: 'Pickup / Drop Off', short: 'Pickup', icon: '🚚', color: '#0FB57A',
+    desc: 'Cargo pickup from shipper, porter booking, CFS / RGL drop-off',
+    sops: {
+      'IN2US': [
+        { id:'SOP-AIR-IN-12', title:'Pick Up Operations Guide — Air IN2US', owner:'Shreyas', priority:'critical', tags:['pickup','air'], link:'' },
+        { id:'SOP-AIR-IN-13', title:'Cargo Drop-Off Operation SOP', owner:'Shreyas', priority:'critical', tags:['drop-off','CFS'], link:'' },
+        { id:'SOP-AIR-IN-14', title:'Pickup & Drop Off Exception Handling Guide', owner:'Shreyas', priority:'high', tags:['FAQ','exception'], link:'' },
+        { id:'SOP-AIR-IN-15', title:'Checklist Verification SOP', owner:'Shreyas', priority:'critical', tags:['checklist','CFS'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-AIR-UK-06', title:'Pick Up Operations Guide — UK', owner:'Shreyas', priority:'critical', tags:['pickup','UK'], link:'' },
+        { id:'SOP-AIR-UK-07', title:'Drop Off Operations Guide — UK', owner:'Shreyas', priority:'critical', tags:['drop-off','UK'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-AIR-DE-05', title:'Pick Up Operations Guide — DE', owner:'Shreyas', priority:'critical', tags:['pickup','DE'], link:'' },
+        { id:'SOP-AIR-DE-06', title:'Drop Off Operations Guide — DE', owner:'Shreyas', priority:'critical', tags:['drop-off','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'consol', label: 'Consol Planning & Export Clearance', short: 'Consol / Export', icon: '🏭', color: '#9B59B6',
+    desc: 'CSBV + Commercial consol planning, export clearance, shipping bill tracking',
+    sops: {
+      'IN2US': [
+        { id:'SOP-AIR-IN-16', title:'Air Consol Planning SOP (CSBV + Commercial)', owner:'Shreyas', priority:'critical', tags:['consol','CSBV','planning'], link:'' },
+        { id:'SOP-AIR-IN-17', title:'Air Consol Execution SOP — CSBV', owner:'Shreyas', priority:'critical', tags:['consol','CSBV','execution'], link:'' },
+        { id:'SOP-AIR-IN-18', title:'CSBV Shipment & Consol Execution SOP', owner:'Shreyas', priority:'critical', tags:['CSBV','commercial'], link:'' },
+        { id:'SOP-AIR-IN-19', title:'ICL Weight & Audit Update SOP', owner:'Shreyas', priority:'high', tags:['ICL','weight','audit'], link:'' },
+        { id:'SOP-AIR-IN-20', title:'Export Ops Rep Guide — Disaggregated Supply Chain', owner:'Olympia', priority:'high', tags:['disaggregated','export'], link:'' },
+        { id:'SOP-AIR-IN-21', title:'ICL Warehouse Operations SOP', owner:'Shreyas', priority:'critical', tags:['ICL','warehouse'], link:'' },
+        { id:'SOP-AIR-IN-22', title:'ICL Payments SOP', owner:'Farhan', priority:'critical', tags:['ICL','payments'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-AIR-UK-08', title:'UK–US Air Ops SOP', owner:'Shreyas', priority:'critical', tags:['UK','air-ops'], link:'' },
+        { id:'SOP-AIR-UK-09', title:'Export Operations Issue Handling Guide', owner:'Shreyas', priority:'high', tags:['FAQ','UK'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-AIR-DE-07', title:'DE–US Air Export Operations SOP', owner:'Shreyas', priority:'critical', tags:['DE','air-ops'], link:'' },
+        { id:'SOP-AIR-DE-08', title:'Export Clearance SOP — DE', owner:'Shreyas', priority:'critical', tags:['clearance','DE'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'clearance', label: 'Import Clearance', short: 'Import Clear', icon: '🛃', color: '#E84040',
+    desc: '7501 entry validation, customs clearance, cargo pull, ISC payment',
+    sops: {
+      'IN2US': [
+        { id:'SOP-AIR-IN-23', title:'Import Clearance SOP — Air', owner:'Shreyas', priority:'critical', tags:['import','7501','clearance'], link:'' },
+        { id:'SOP-AIR-IN-24', title:'Air Import Operations SOP — Aggregated Supply Chain', owner:'Jaison', priority:'critical', tags:['import','FedEx','aggregated'], link:'' },
+        { id:'SOP-AIR-IN-25', title:'Cargo Pull & ISC Payment SOP — Disaggregated', owner:'Jaison', priority:'critical', tags:['cargo-pull','ISC','disaggregated'], link:'' },
+        { id:'SOP-AIR-IN-26', title:'Internal WBR Data Review and Callouts SOP', owner:'Shreyas', priority:'medium', tags:['WBR','reporting'], link:'' },
+        { id:'SOP-AIR-IN-27', title:'Chargeable Weight Updation SOP', owner:'Shreyas', priority:'high', tags:['chargeable-weight'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-AIR-UK-10', title:'Import Clearance SOP — Air UK', owner:'Shreyas', priority:'critical', tags:['import','UK','clearance'], link:'' },
+        { id:'SOP-AIR-UK-11', title:'Cargo Recovery and ISC Payment SOP', owner:'Shreyas', priority:'critical', tags:['cargo-pull','ISC'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-AIR-DE-09', title:'Import Clearance SOP — Air DE', owner:'Shreyas', priority:'critical', tags:['import','DE','clearance'], link:'' },
+      ],
+    }
+  },
+  {
+    id: 'delivery', label: 'Delivery', short: 'Delivery', icon: '🏁', color: '#0FB57A',
+    desc: 'FedEx last-mile delivery (aggregated) or destination delivery for disaggregated supply chain',
+    subStages: ['FedEx Aggregated', 'Disaggregated Last Mile'],
+    sops: {
+      'IN2US': [
+        { id:'SOP-AIR-IN-28', title:'Import Clearance & Delivery — FedEx', owner:'Jaison', priority:'critical', tags:['FedEx','delivery','aggregated'], link:'' },
+        { id:'SOP-AIR-IN-29', title:'Amazon WBR Data Review SOP', owner:'Shreyas', priority:'medium', tags:['WBR','Amazon'], link:'' },
+        { id:'SOP-AIR-IN-30', title:'FedEx Claim Process SOP', owner:'Raunak', priority:'medium', tags:['FedEx','claim'], link:'' },
+        { id:'SOP-AIR-IN-31', title:'FedEx Labels Creation SOP', owner:'Raunak', priority:'medium', tags:['FedEx','label'], link:'' },
+      ],
+      'UK2US': [
+        { id:'SOP-AIR-UK-12', title:'Destination Delivery — Last Mile (UK)', owner:'Piyush', priority:'critical', tags:['last-mile','UK'], link:'' },
+      ],
+      'DE2US': [
+        { id:'SOP-AIR-DE-10', title:'Destination Delivery — Last Mile (DE)', owner:'Shreyas', priority:'critical', tags:['last-mile','DE'], link:'' },
+      ],
+    }
+  },
+]
+
+const PRIORITY_COLOR = { critical:'#E84040', high:'#F0A500', medium:'#4A8EE8', low:'#4A5A78' }
+const PRIORITY_BG = { critical:'rgba(232,64,64,0.12)', high:'rgba(240,165,0,0.12)', medium:'rgba(74,142,232,0.12)', low:'rgba(74,90,120,0.12)' }
+
+function StageTimeline({ stages, activeStageId, onSelect }) {
+  return (
+    <div style={{ overflowX:'auto', paddingBottom:4 }}>
+      <div style={{ display:'flex', alignItems:'flex-start', gap:0, minWidth: stages.length * 100 }}>
+        {stages.map((stage, i) => {
+          const isActive = activeStageId === stage.id
+          const isLast = i === stages.length - 1
+          return (
+            <div key={stage.id} style={{ display:'flex', alignItems:'center', flex: isLast ? 0 : 1 }}>
+              <div onClick={() => onSelect(stage.id)} style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:5, cursor:'pointer', flexShrink:0 }}>
+                <div style={{
+                  width: isActive ? 46 : 36, height: isActive ? 46 : 36, borderRadius:'50%',
+                  background: isActive ? stage.color : '#111721',
+                  border: `2px solid ${isActive ? stage.color : '#1E2C42'}`,
+                  display:'flex', alignItems:'center', justifyContent:'center',
+                  fontSize: isActive ? 18 : 13, transition:'all .2s',
+                  boxShadow: isActive ? `0 0 18px ${stage.color}55` : 'none',
+                }}>
+                  {stage.icon}
+                </div>
+                <div style={{
+                  fontSize:8, fontFamily:'monospace', letterSpacing:.5,
+                  color: isActive ? stage.color : '#4A5A78',
+                  textAlign:'center', maxWidth:76, lineHeight:1.3,
+                  fontWeight: isActive ? 700 : 400, textTransform:'uppercase',
+                }}>
+                  {stage.short}
+                </div>
+                <div style={{
+                  fontSize:8, fontFamily:'monospace',
+                  color: isActive ? '#fff' : '#4A5A78',
+                  background: isActive ? stage.color : '#172030',
+                  borderRadius:10, padding:'1px 5px',
+                  border:`1px solid ${isActive ? stage.color : '#1E2C42'}`,
+                }}>
+                  {Object.values(stage.sops).flat().length} SOPs
+                </div>
+              </div>
+              {!isLast && (
+                <div style={{
+                  flex:1, height:2, marginBottom:36,
+                  background:`linear-gradient(90deg,${stages[i].color}44,${stages[i+1].color}44)`
+                }} />
+              )}
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
 }
 
-function StatusBadge({ s }) {
-  if (s === 'active') return <span className="badge b-ac">● ACTIVE</span>
-  if (s === 'under_review') return <span className="badge b-rv">◐ REVIEW</span>
-  return <span className="badge b-ar">○ ARCHIVED</span>
-}
-function PriBadge({ p }) {
-  if (p === 'critical') return <span className="badge b-cr">▲ CRITICAL</span>
-  if (p === 'high') return <span className="badge b-hi">↑ HIGH</span>
-  return <span className="badge b-me">→ MEDIUM</span>
+function SOPCard({ sop, stageColor }) {
+  return (
+    <div
+      onClick={() => sop.link && window.open(sop.link, '_blank')}
+      style={{
+        background:'#0C1018', border:'1px solid #1E2C42', borderRadius:8,
+        padding:'13px 15px', cursor: sop.link ? 'pointer' : 'default',
+        borderLeft:`3px solid ${PRIORITY_COLOR[sop.priority]}`, transition:'all .15s',
+      }}
+      onMouseEnter={e => { e.currentTarget.style.borderColor = stageColor; e.currentTarget.style.background = '#111820' }}
+      onMouseLeave={e => { e.currentTarget.style.borderColor = '#1E2C42'; e.currentTarget.style.background = '#0C1018' }}
+    >
+      <div style={{ display:'flex', alignItems:'flex-start', gap:8, marginBottom:8 }}>
+        <div style={{ flex:1 }}>
+          <div style={{ fontSize:9, fontFamily:'monospace', color:stageColor, letterSpacing:1, marginBottom:3 }}>{sop.id}</div>
+          <div style={{ fontSize:12, fontWeight:600, color:'#E0E8F5', lineHeight:1.35 }}>{sop.title}</div>
+        </div>
+        <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:4, flexShrink:0 }}>
+          <div style={{
+            fontSize:8, fontFamily:'monospace', padding:'2px 6px', borderRadius:4,
+            background:PRIORITY_BG[sop.priority], color:PRIORITY_COLOR[sop.priority],
+            border:`1px solid ${PRIORITY_COLOR[sop.priority]}44`, whiteSpace:'nowrap',
+          }}>
+            {sop.priority === 'critical' ? '🔴' : sop.priority === 'high' ? '🟡' : '🔵'} {sop.priority}
+          </div>
+          {sop.link && <div style={{ fontSize:7, color:'#4A5A78', fontFamily:'monospace' }}>↗ Google Doc</div>}
+        </div>
+      </div>
+      <div style={{ display:'flex', alignItems:'center', gap:5, flexWrap:'wrap' }}>
+        <div style={{ fontSize:9, color:'#4A5A78', fontFamily:'monospace' }}>👤 {sop.owner}</div>
+        <div style={{ flex:1 }} />
+        {sop.tags.slice(0,3).map(t => (
+          <div key={t} style={{
+            fontSize:8, fontFamily:'monospace', padding:'1px 5px', borderRadius:20,
+            background:'#172030', border:'1px solid #1E2C42', color:'#4A5A78',
+          }}>#{t}</div>
+        ))}
+      </div>
+    </div>
+  )
 }
 
 export default function PublicView() {
   const navigate = useNavigate()
   const { isAdmin } = useAuth()
-  const [sops, setSops] = useState([])
-  const [teams, setTeams] = useState([])
-  const [category, setCategory] = useState('all')
+  const [mode, setMode] = useState('ocean')   // 'ocean' | 'air'
+  const [lane, setLane] = useState('IN2US')   // 'IN2US' | 'UK2US' | 'DE2US'
+  const [activeStageId, setActiveStageId] = useState('booking')
   const [search, setSearch] = useState('')
-  const [statusF, setStatusF] = useState('all')
-  const [selected, setSelected] = useState(null)
-  const [activeStep, setActiveStep] = useState(null)
-  const [done, setDone] = useState({})
-  const [amendments, setAmendments] = useState([])
-  const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    Promise.all([db.getSops(), db.getTeams()]).then(([s, t]) => {
-      setSops(s)
-      setTeams(t)
-      setLoading(false)
-    })
-  }, [])
+  const stages = mode === 'ocean' ? OCEAN_STAGES : AIR_STAGES
+  const activeStage = stages.find(s => s.id === activeStageId) || stages[0]
 
-  useEffect(() => {
-    if (selected) db.getAmendments(selected.id).then(setAmendments)
-  }, [selected])
+  // Reset to first stage when mode changes
+  const handleModeChange = (m) => { setMode(m); setActiveStageId(stages[0].id); setSearch('') }
+  const handleStageSelect = (id) => { setActiveStageId(id); setSearch('') }
 
-  const filtered = sops.filter(s => {
-    if (category !== 'all' && s.category !== category) return false
-    if (statusF === 'active' && s.status !== 'active') return false
-    if (statusF === 'under_review' && s.status !== 'under_review') return false
-    if (search) {
-      const q = search.toLowerCase()
-      const tags = Array.isArray(s.tags) ? s.tags : []
-      return s.title.toLowerCase().includes(q) || s.id.toLowerCase().includes(q) ||
-        tags.some(t => t.toLowerCase().includes(q)) || (s.description || '').toLowerCase().includes(q)
-    }
-    return true
-  })
+  const stageSops = activeStage.sops[lane] || []
+  const filtered = stageSops.filter(s =>
+    !search || s.title.toLowerCase().includes(search.toLowerCase()) ||
+    s.tags.some(t => t.toLowerCase().includes(search.toLowerCase())) ||
+    s.owner.toLowerCase().includes(search.toLowerCase())
+  )
 
-  const catCounts = CATEGORIES.map(c => ({
-    ...c,
-    count: c.id === 'all' ? sops.length : sops.filter(s => s.category === c.id).length,
-  }))
-
-  const getProgress = (sop) => {
-    if (!sop?.steps?.length) return 0
-    const d = sop.steps.filter(s => done[`${sop.id}-${s.id}`]).length
-    return Math.round((d / sop.steps.length) * 100)
-  }
-
-  const teamName = (tid) => teams.find(t => t.id === tid)?.name || '—'
+  const totalSops = stages.reduce((a, s) => a + Object.values(s.sops).flat().length, 0)
+  const laneSops = stages.reduce((a, s) => a + (s.sops[lane]?.length || 0), 0)
+  const modeColor = mode === 'ocean' ? '#12B5CC' : '#4A8EE8'
 
   return (
-    <>
-      <style>{css}</style>
-      <div className="pv-app">
-        {/* SIDEBAR */}
-        <aside className="pv-sidebar">
-          <div className="pv-logo">
-            <div className="pv-wordmark">XHIPMENT</div>
-            <div className="pv-sub">Freight Forwarding Intelligence</div>
-            <div className="pv-badge">
-              <span className="pv-dot" />SOP PORTAL
-            </div>
+    <div style={{ display:'flex', height:'100vh', overflow:'hidden', background:'#07090F' }}>
+
+      {/* ── SIDEBAR ── */}
+      <aside style={{ width:220, minWidth:220, background:'#0C1018', borderRight:'1px solid #1E2C42', display:'flex', flexDirection:'column', overflow:'hidden' }}>
+        {/* Logo */}
+        <div style={{ padding:'20px 18px 16px', borderBottom:'1px solid #1E2C42' }}>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:24, letterSpacing:3, color:'#FFB627', lineHeight:1 }}>XHIPMENT</div>
+          <div style={{ fontSize:9, fontFamily:'monospace', color:'#4A5A78', letterSpacing:2, marginTop:3 }}>SOP PORTAL</div>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:5, marginTop:8, padding:'2px 8px', background:'rgba(18,181,204,0.1)', border:'1px solid rgba(18,181,204,0.2)', borderRadius:4 }}>
+            <div style={{ width:5, height:5, borderRadius:'50%', background:'#0FB57A', animation:'pulse 2s infinite' }} />
+            <div style={{ fontSize:9, fontFamily:'monospace', color:'#12B5CC', letterSpacing:1 }}>LIVE</div>
           </div>
-          <div className="pv-stats">
-            <div className="pv-stat"><div className="pv-stat-val g">{sops.length}</div><div className="pv-stat-lbl">Total SOPs</div></div>
-            <div className="pv-stat"><div className="pv-stat-val">{sops.filter(s => s.status === 'active').length}</div><div className="pv-stat-lbl">Active</div></div>
-            <div className="pv-stat"><div className="pv-stat-val">{sops.filter(s => s.status === 'under_review').length}</div><div className="pv-stat-lbl">In Review</div></div>
-            <div className="pv-stat"><div className="pv-stat-val">{teams.length}</div><div className="pv-stat-lbl">Teams</div></div>
+        </div>
+
+        {/* Mode Switcher */}
+        <div style={{ padding:'14px 12px 10px', borderBottom:'1px solid #1E2C42' }}>
+          <div style={{ fontSize:9, fontFamily:'monospace', color:'#4A5A78', letterSpacing:1.5, marginBottom:8 }}>MODE</div>
+          <div style={{ display:'flex', gap:6 }}>
+            {[['ocean','🚢','Ocean'],['air','✈️','Air']].map(([m,icon,label]) => (
+              <button key={m} onClick={() => handleModeChange(m)} style={{
+                flex:1, padding:'7px 4px', borderRadius:6, cursor:'pointer', transition:'all .15s',
+                background: mode === m ? (m === 'ocean' ? '#12B5CC22' : '#4A8EE822') : 'transparent',
+                border: mode === m ? `1px solid ${m === 'ocean' ? '#12B5CC' : '#4A8EE8'}` : '1px solid #1E2C42',
+                color: mode === m ? (m === 'ocean' ? '#12B5CC' : '#4A8EE8') : '#4A5A78',
+                fontSize:11, fontWeight: mode === m ? 700 : 400,
+              }}>
+                {icon} {label}
+              </button>
+            ))}
           </div>
-          <div className="pv-sec-lbl">Operations</div>
-          {catCounts.map(c => (
-            <div key={c.id} className={`pv-nav${category === c.id ? ' on' : ''}`} onClick={() => { setCategory(c.id); setSelected(null) }}>
-              <span style={{ fontSize: 14, width: 16, textAlign: 'center', flexShrink: 0 }}>{c.icon}</span>
-              <span>{c.label}</span>
-              <span className="pv-nav-ct">{c.count}</span>
+        </div>
+
+        {/* Lane Filter */}
+        <div style={{ padding:'12px', borderBottom:'1px solid #1E2C42' }}>
+          <div style={{ fontSize:9, fontFamily:'monospace', color:'#4A5A78', letterSpacing:1.5, marginBottom:8 }}>TRADE LANE</div>
+          {['IN2US','UK2US','DE2US'].map(l => (
+            <div key={l} onClick={() => setLane(l)} style={{
+              padding:'8px 12px', borderRadius:6, cursor:'pointer', marginBottom:4,
+              background: lane === l ? `${modeColor}18` : 'transparent',
+              border: lane === l ? `1px solid ${modeColor}55` : '1px solid transparent',
+              borderLeft: lane === l ? `2px solid ${modeColor}` : '2px solid transparent',
+              color: lane === l ? modeColor : '#4A5A78', fontSize:12, transition:'all .15s',
+            }}>
+              <span style={{ fontFamily:'monospace', fontWeight: lane === l ? 700 : 400 }}>{l}</span>
+              <span style={{ float:'right', fontSize:10, opacity:.6 }}>
+                {stages.reduce((a,s) => a + (s.sops[l]?.length || 0), 0)}
+              </span>
             </div>
           ))}
-          <div style={{ flex: 1 }} />
+        </div>
+
+        {/* Stage quick-nav */}
+        <div style={{ flex:1, overflowY:'auto', padding:'12px' }}>
+          <div style={{ fontSize:9, fontFamily:'monospace', color:'#4A5A78', letterSpacing:1.5, marginBottom:8 }}>LIFECYCLE STAGES</div>
+          {stages.map(s => (
+            <div key={s.id} onClick={() => handleStageSelect(s.id)} style={{
+              display:'flex', alignItems:'center', gap:8, padding:'7px 10px',
+              borderRadius:6, cursor:'pointer', marginBottom:3,
+              background: activeStageId === s.id ? `${s.color}18` : 'transparent',
+              borderLeft: activeStageId === s.id ? `2px solid ${s.color}` : '2px solid transparent',
+              transition:'all .15s',
+            }}>
+              <span style={{ fontSize:12 }}>{s.icon}</span>
+              <span style={{ fontSize:11, color: activeStageId === s.id ? s.color : '#889ABB', flex:1, lineHeight:1.3 }}>{s.short}</span>
+              <span style={{
+                fontSize:9, fontFamily:'monospace',
+                color: activeStageId === s.id ? s.color : '#4A5A78',
+                background: activeStageId === s.id ? `${s.color}22` : '#172030',
+                borderRadius:10, padding:'1px 5px',
+              }}>{s.sops[lane]?.length || 0}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Footer */}
+        <div style={{ padding:'12px', borderTop:'1px solid #1E2C42' }}>
           {isAdmin ? (
-            <a className="pv-admin-btn" onClick={() => navigate('/admin')} style={{ cursor: 'pointer' }}>
-              ◆ Admin Dashboard
-            </a>
+            <button onClick={() => navigate('/admin')} style={{ width:'100%', padding:8, background:'rgba(232,148,10,0.1)', border:'1px solid rgba(232,148,10,0.3)', color:'#E8940A', borderRadius:6, cursor:'pointer', fontSize:11, fontFamily:'monospace' }}>
+              ⚙ Admin Dashboard
+            </button>
           ) : (
-            <a className="pv-admin-btn" onClick={() => navigate('/admin/login')} style={{ cursor: 'pointer' }}>
-              ⚙ Admin Login
-            </a>
+            <button onClick={() => navigate('/admin/login')} style={{ width:'100%', padding:8, background:'transparent', border:'1px solid #1E2C42', color:'#4A5A78', borderRadius:6, cursor:'pointer', fontSize:11, fontFamily:'monospace' }}>
+              🔐 Admin Login
+            </button>
           )}
-        </aside>
+        </div>
+      </aside>
 
-        {/* MAIN */}
-        <main className="pv-main">
-          <div className="pv-topbar">
-            <div className="pv-title">
-              {category === 'all' ? <>ALL <span>PROCEDURES</span></> : getCatLabel(category).toUpperCase()}
-            </div>
-            <div className="pv-div" />
-            <div className="pv-search-wrap">
-              <span className="pv-search-ico">⌕</span>
-              <input className="pv-search" placeholder="Search SOPs, tags, IDs..." value={search} onChange={e => setSearch(e.target.value)} />
-            </div>
-            <div className="pv-chips">
-              <div className={`pv-chip${statusF === 'all' ? ' on' : ''}`} onClick={() => setStatusF('all')}>ALL</div>
-              <div className={`pv-chip${statusF === 'active' ? ' ac' : ''}`} onClick={() => setStatusF(statusF === 'active' ? 'all' : 'active')}>ACTIVE</div>
-              <div className={`pv-chip${statusF === 'under_review' ? ' rv' : ''}`} onClick={() => setStatusF(statusF === 'under_review' ? 'all' : 'under_review')}>REVIEW</div>
-            </div>
+      {/* ── MAIN ── */}
+      <main style={{ flex:1, display:'flex', flexDirection:'column', minWidth:0, overflow:'hidden' }}>
+
+        {/* Topbar */}
+        <div style={{ height:56, padding:'0 22px', borderBottom:'1px solid #1E2C42', display:'flex', alignItems:'center', gap:14, background:'#0C1018', flexShrink:0 }}>
+          <div style={{ fontFamily:'Bebas Neue, sans-serif', fontSize:18, letterSpacing:2, color:'#E0E8F5' }}>
+            {mode === 'ocean' ? '🚢' : '✈️'} {mode.toUpperCase()} <span style={{ color:modeColor }}>SOP LIFECYCLE</span>
           </div>
+          <div style={{ width:1, height:18, background:'#1E2C42' }} />
+          <div style={{ fontSize:11, fontFamily:'monospace', color:'#4A5A78' }}>{lane} · {laneSops} SOPs</div>
+          <div style={{ flex:1 }} />
+          <input
+            placeholder="🔍 Search SOPs, tags, owners..."
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            style={{ background:'#172030', border:'1px solid #1E2C42', color:'#E0E8F5', padding:'7px 12px', borderRadius:6, fontSize:12, outline:'none', width:240 }}
+          />
+        </div>
 
-          <div className="pv-body">
-            <div className="pv-list">
-              <div className="pv-list-hd">
-                <div className="pv-ct-lbl">SHOWING {filtered.length} OF {sops.length} PROCEDURES</div>
+        {/* Timeline */}
+        <div style={{ padding:'18px 22px 0', borderBottom:'1px solid #1E2C42', background:'#0C1018', flexShrink:0 }}>
+          <StageTimeline stages={stages} activeStageId={activeStageId} onSelect={handleStageSelect} />
+        </div>
+
+        {/* Active stage detail */}
+        <div style={{ flex:1, overflowY:'auto', padding:'16px 22px 24px' }}>
+
+          {/* Stage header */}
+          <div style={{
+            background:'#0C1018', border:`1px solid ${activeStage.color}33`,
+            borderRadius:10, padding:'14px 18px', marginBottom:16,
+            display:'flex', alignItems:'center', gap:12,
+          }}>
+            <div style={{
+              width:42, height:42, borderRadius:'50%', flexShrink:0,
+              background:`${activeStage.color}22`, border:`2px solid ${activeStage.color}`,
+              display:'flex', alignItems:'center', justifyContent:'center', fontSize:20,
+            }}>{activeStage.icon}</div>
+            <div style={{ flex:1 }}>
+              <div style={{ fontFamily:'monospace', fontSize:13, letterSpacing:1.5, color:activeStage.color, fontWeight:900, textTransform:'uppercase' }}>
+                {activeStage.label}
               </div>
-              {loading && <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 40 }}>Loading...</div>}
-              {!loading && filtered.length === 0 && <div style={{ color: 'var(--text3)', fontSize: 13, textAlign: 'center', padding: 40 }}>No procedures match your filters.</div>}
-              {filtered.map(sop => {
-                const tags = Array.isArray(sop.tags) ? sop.tags : []
-                const steps = Array.isArray(sop.steps) ? sop.steps : []
-                return (
-                  <div key={sop.id} className={`pv-card ${sop.priority === 'critical' ? 'crit' : sop.priority === 'high' ? 'high' : 'med'}${selected?.id === sop.id ? ' sel' : ''}`} onClick={() => setSelected(sop)}>
-                    <div className="pv-card-hd">
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div className="pv-card-id">{sop.id} · {sop.version}</div>
-                        <div className="pv-card-title">{sop.title}</div>
-                        <div className="pv-card-desc">{sop.description}</div>
-                      </div>
-                      <div className="pv-owner">
-                        <div className="av-xs">{getInitials(sop.owner)}</div>
-                        <span>{sop.owner?.split(' ')[0]}</span>
-                      </div>
-                    </div>
-                    <div className="pv-card-ft">
-                      <StatusBadge s={sop.status} />
-                      <PriBadge p={sop.priority} />
-                      <span className="badge b-ct">{getCatLabel(sop.category)}</span>
-                      <span style={{ fontSize: 10, color: 'var(--text3)', fontFamily: 'IBM Plex Mono' }}>{steps.length} steps</span>
-                      <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--text3)', fontFamily: 'IBM Plex Mono' }}>{fmtDate(sop.updated_at)}</span>
-                    </div>
-                  </div>
-                )
-              })}
-            </div>
-
-            {/* DETAIL PANEL */}
-            <div className={`pv-detail${selected ? '' : ' closed'}`}>
-              {selected ? (() => {
-                const steps = Array.isArray(selected.steps) ? selected.steps : []
-                const tags = Array.isArray(selected.tags) ? selected.tags : []
-                const prog = getProgress(selected)
-                return (
-                  <>
-                    <div className="pv-dtop">
-                      <div className="pv-did">{selected.id} · {selected.version}</div>
-                      <button className="close-btn" onClick={() => setSelected(null)}>✕</button>
-                    </div>
-                    <div className="pv-dbody">
-                      <div className="pv-dtitle">{selected.title}</div>
-                      <div className="pv-dbadges">
-                        <StatusBadge s={selected.status} />
-                        <PriBadge p={selected.priority} />
-                        <span className="badge b-ct">{getCatLabel(selected.category)}</span>
-                      </div>
-                      <div className="pv-ddesc">{selected.description}</div>
-                      <div className="pv-dmeta">
-                        <div className="pv-mi"><div className="pv-ml">Owner</div><div className="pv-mv" style={{ display: 'flex', alignItems: 'center', gap: 5 }}><div className="av-xs" style={{ width: 22, height: 22, fontSize: 8 }}>{getInitials(selected.owner)}</div>{selected.owner}</div></div>
-                        <div className="pv-mi"><div className="pv-ml">Team</div><div className="pv-mv">{teamName(selected.team_id)}</div></div>
-                        <div className="pv-mi"><div className="pv-ml">Version</div><div className="pv-mv" style={{ fontFamily: 'IBM Plex Mono', color: 'var(--gold)' }}>{selected.version}</div></div>
-                        <div className="pv-mi"><div className="pv-ml">Updated</div><div className="pv-mv">{fmtDate(selected.updated_at)}</div></div>
-                      </div>
-
-                      <div className="prog-lbl"><span>EXECUTION PROGRESS</span><span style={{ color: 'var(--gold)' }}>{prog}%</span></div>
-                      <div className="prog-track"><div className="prog-fill" style={{ width: `${prog}%` }} /></div>
-
-                      <div className="sec-title">PROCEDURE STEPS</div>
-                      <div className="steps-list">
-                        {steps.map(step => {
-                          const isDone = done[`${selected.id}-${step.id}`]
-                          const isOn = activeStep === step.id
-                          return (
-                            <div key={step.id} className={`step-item${isOn ? ' on' : ''}${isDone ? ' done' : ''}`} onClick={() => setActiveStep(p => p === step.id ? null : step.id)}>
-                              <div className="step-num" onClick={e => { e.stopPropagation(); setDone(p => ({ ...p, [`${selected.id}-${step.id}`]: !p[`${selected.id}-${step.id}`] })) }} title="Mark complete">
-                                {isDone ? '✓' : step.id}
-                              </div>
-                              <div className="step-body">
-                                <div className="step-hd">
-                                  <div className="step-title" style={{ textDecoration: isDone ? 'line-through' : 'none', opacity: isDone ? 0.5 : 1 }}>{step.title}</div>
-                                  <div className="step-dur">{step.duration}</div>
-                                </div>
-                                <div className="step-dept">{step.dept}</div>
-                                {isOn && <div className="step-desc">{step.desc}</div>}
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-
-                      {tags.length > 0 && (
-                        <div className="tag-row">{tags.map(t => <span key={t} className="tag">#{t}</span>)}</div>
-                      )}
-
-                      {amendments.length > 0 && (
-                        <>
-                          <div className="sec-title" style={{ marginTop: 18 }}>AMENDMENT HISTORY</div>
-                          {amendments.map(a => (
-                            <div key={a.id} className="amend-item">
-                              <div className="amend-ver">{a.version} — {fmtDate(a.created_at)}</div>
-                              <div className="amend-sum">{a.change_summary}</div>
-                              <div className="amend-meta">By {a.changed_by}</div>
-                            </div>
-                          ))}
-                        </>
-                      )}
-                    </div>
-                  </>
-                )
-              })() : null}
-
-              {!selected && (
-                <div className="pv-empty">
-                  <div className="pv-empty-ico">⊞</div>
-                  <div className="pv-empty-title">Select a Procedure</div>
-                  <div className="pv-empty-sub">Click any SOP card to view full details, steps, and amendment history.</div>
+              <div style={{ fontSize:11, color:'#889ABB', marginTop:2 }}>{activeStage.desc}</div>
+              {activeStage.subStages && (
+                <div style={{ display:'flex', gap:6, marginTop:6 }}>
+                  {activeStage.subStages.map(s => (
+                    <div key={s} style={{
+                      fontSize:9, fontFamily:'monospace', padding:'2px 8px', borderRadius:4,
+                      background:`${activeStage.color}18`, border:`1px solid ${activeStage.color}44`,
+                      color:activeStage.color,
+                    }}>⤷ {s}</div>
+                  ))}
                 </div>
               )}
             </div>
+            <div style={{ textAlign:'right', flexShrink:0 }}>
+              <div style={{ fontSize:22, fontFamily:'monospace', color:activeStage.color, fontWeight:900 }}>{filtered.length}</div>
+              <div style={{ fontSize:9, fontFamily:'monospace', color:'#4A5A78' }}>SOPs · {lane}</div>
+            </div>
           </div>
-        </main>
-      </div>
-    </>
+
+          {/* SOP Grid */}
+          {filtered.length > 0 ? (
+            <div style={{ display:'grid', gridTemplateColumns:'repeat(auto-fill,minmax(300px,1fr))', gap:9 }}>
+              {filtered.map(sop => <SOPCard key={sop.id} sop={sop} stageColor={activeStage.color} />)}
+            </div>
+          ) : (
+            <div style={{ textAlign:'center', padding:'60px 20px', color:'#4A5A78' }}>
+              <div style={{ fontSize:32, marginBottom:12 }}>🔍</div>
+              <div style={{ fontFamily:'monospace', fontSize:14, letterSpacing:1 }}>
+                {search ? 'No SOPs match your search' : 'No SOPs for this stage / lane yet'}
+              </div>
+            </div>
+          )}
+        </div>
+      </main>
+
+      <style>{`@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }`}</style>
+    </div>
   )
 }
