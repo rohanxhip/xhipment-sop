@@ -1,64 +1,30 @@
-import { useEffect } from 'react'
-
-const S = {
-  wrap: {
-    position: 'fixed', bottom: 28, right: 28, zIndex: 9999,
-    display: 'flex', flexDirection: 'column', gap: 10, pointerEvents: 'none',
-  },
-  toast: (type) => ({
-    display: 'flex', alignItems: 'flex-start', gap: 12,
-    background: 'var(--bg2)', border: `1px solid ${
-      type === 'success' ? 'rgba(15,181,122,0.35)' :
-      type === 'error'   ? 'rgba(232,64,64,0.35)' :
-      type === 'info'    ? 'rgba(74,142,232,0.35)' :
-      'rgba(240,165,0,0.35)'
-    }`,
-    borderRadius: 8, padding: '12px 16px', minWidth: 280, maxWidth: 380,
-    boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-    animation: 'toastIn 0.25s ease',
-    pointerEvents: 'all',
-  }),
-  icon: (type) => ({
-    fontSize: 16, marginTop: 1,
-    color: type === 'success' ? 'var(--success)' :
-           type === 'error'   ? 'var(--danger)' :
-           type === 'info'    ? 'var(--info)' : 'var(--warn)',
-  }),
-  title: { fontSize: 13, fontWeight: 600, color: 'var(--text1)', marginBottom: 2 },
-  msg: { fontSize: 12, color: 'var(--text2)', lineHeight: 1.4 },
-}
-
-const ICONS = { success: '✓', error: '✕', warning: '⚠', info: 'ℹ' }
-
 export function Toast({ toasts, dismiss }) {
   return (
-    <div style={S.wrap}>
-      {toasts.map(t => (
-        <div key={t.id} style={S.toast(t.type)} onClick={() => dismiss(t.id)}>
-          <span style={S.icon(t.type)}>{ICONS[t.type] || 'ℹ'}</span>
-          <div>
-            {t.title && <div style={S.title}>{t.title}</div>}
-            <div style={S.msg}>{t.message}</div>
+    <div style={{ position:'fixed', bottom:24, right:24, zIndex:9999, display:'flex', flexDirection:'column', gap:10, pointerEvents:'none' }}>
+      {toasts.map(t => {
+        const colors = {
+          success:{ bg:'#F0FDF4', border:'#86EFAC', text:'#16A34A', icon:'✓' },
+          error:  { bg:'#FEF2F2', border:'#FECACA', text:'#DC2626', icon:'✕' },
+          warning:{ bg:'#FFFBEB', border:'#FDE68A', text:'#D97706', icon:'⚠' },
+          info:   { bg:'#EFF6FF', border:'#BFDBFE', text:'#2563EB', icon:'ℹ' },
+        }[t.type] || { bg:'#F8FAFC', border:'#E2E8F0', text:'#475569', icon:'ℹ' }
+        return (
+          <div key={t.id} onClick={() => dismiss(t.id)} style={{
+            display:'flex', alignItems:'flex-start', gap:12, pointerEvents:'all', cursor:'pointer',
+            background:colors.bg, border:`1.5px solid ${colors.border}`, borderRadius:10,
+            padding:'13px 16px', minWidth:300, maxWidth:400,
+            boxShadow:'0 4px 20px rgba(0,0,0,0.10)', animation:'toastIn .25s ease',
+          }}>
+            <div style={{ width:22, height:22, borderRadius:'50%', background:colors.text, color:'#fff', display:'flex', alignItems:'center', justifyContent:'center', fontSize:11, fontWeight:900, flexShrink:0 }}>
+              {colors.icon}
+            </div>
+            <div>
+              {t.title && <div style={{ fontSize:13, fontWeight:700, color:'#0F172A', marginBottom:2 }}>{t.title}</div>}
+              <div style={{ fontSize:12, color:'#475569', lineHeight:1.4 }}>{t.message}</div>
+            </div>
           </div>
-        </div>
-      ))}
+        )
+      })}
     </div>
   )
-}
-
-let _add = null
-export function useToast() {
-  return {
-    toast: (opts) => _add?.(opts),
-  }
-}
-
-export function ToastProvider({ children }) {
-  return children
-}
-
-// Simple global toast hook
-export function useToastState() {
-  const [toasts, setToasts] = ([])
-  return { toasts, add: () => {}, dismiss: () => {} }
 }

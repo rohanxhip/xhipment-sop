@@ -22,67 +22,62 @@ export default function AdminLogin() {
   }
 
   return (
-    <>
-      <style>{`
-        .login-page{height:100vh;display:flex;align-items:center;justify-content:center;background:var(--bg0);padding:20px}
-        .login-card{width:100%;max-width:400px;background:var(--bg1);border:1px solid var(--border);border-radius:12px;overflow:hidden}
-        .login-header{padding:32px 32px 24px;border-bottom:1px solid var(--border);text-align:center}
-        .login-logo{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:4px;color:var(--gold2);line-height:1}
-        .login-sub{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:2px;margin-top:4px}
-        .login-tag{display:inline-block;margin-top:10px;padding:3px 10px;border-radius:4px;background:var(--bg3);border:1px solid var(--border2);font-size:10px;font-family:'IBM Plex Mono',monospace;color:var(--text2);letter-spacing:1px}
-        .login-body{padding:28px 32px 32px}
-        .login-title{font-size:16px;font-weight:600;color:var(--text1);margin-bottom:6px}
-        .login-hint{font-size:12px;color:var(--text3);margin-bottom:20px;line-height:1.5}
-        .login-field{margin-bottom:14px}
-        .login-lbl{display:block;font-size:11px;color:var(--text2);margin-bottom:6px;font-family:'IBM Plex Mono',monospace;letter-spacing:.5px}
-        .login-input{width:100%;padding:9px 12px;background:var(--bg2);border:1px solid var(--border);color:var(--text1);border-radius:6px;font-size:13px;font-family:'DM Sans',sans-serif;outline:none;transition:border-color .15s}
-        .login-input:focus{border-color:rgba(232,148,10,.45)}
-        .login-err{background:var(--danger-dim);border:1px solid rgba(232,64,64,.3);border-radius:6px;padding:10px 12px;font-size:12px;color:var(--danger);margin-bottom:14px}
-        .login-btn{width:100%;padding:11px;background:var(--gold);border:none;border-radius:6px;color:#000;font-size:14px;font-weight:700;cursor:pointer;font-family:'DM Sans',sans-serif;transition:background .15s;letter-spacing:.5px}
-        .login-btn:hover{background:var(--gold2)}
-        .login-btn:disabled{opacity:.5;cursor:not-allowed}
-        .login-back{display:block;text-align:center;margin-top:16px;font-size:12px;color:var(--text3);cursor:pointer;transition:color .15s}
-        .login-back:hover{color:var(--text2)}
-        .demo-box{background:rgba(232,148,10,.06);border:1px solid rgba(232,148,10,.2);border-radius:6px;padding:10px 12px;margin-bottom:18px;font-size:11px;color:var(--gold);font-family:'IBM Plex Mono',monospace;line-height:1.6}
-      `}</style>
+    <div style={{ minHeight:'100vh', background:'#F8FAFC', display:'flex', alignItems:'center', justifyContent:'center', padding:20 }}>
+      <div style={{ width:'100%', maxWidth:420 }}>
 
-      <div className="login-page">
-        <div className="login-card">
-          <div className="login-header">
-            <div className="login-logo">XHIPMENT</div>
-            <div className="login-sub">Freight Forwarding Intelligence</div>
-            <div className="login-tag">⚙ ADMIN PORTAL</div>
+        {/* Logo */}
+        <div style={{ textAlign:'center', marginBottom:32 }}>
+          <div style={{ display:'inline-flex', alignItems:'center', gap:10, marginBottom:12 }}>
+            <div style={{ width:44, height:44, borderRadius:10, background:'#FF6B2B', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, fontWeight:900, color:'#fff' }}>X</div>
+            <span style={{ fontSize:22, fontWeight:800, color:'#0F172A', letterSpacing:-.3 }}>Xhipment</span>
           </div>
-          <div className="login-body">
-            <div className="login-title">Admin Sign In</div>
-            <div className="login-hint">Access the SOP management dashboard to create, edit, and publish procedures.</div>
+          <div style={{ fontSize:13, color:'#64748B' }}>Sign in to the SOP Management Portal</div>
+        </div>
 
-            {isDemoMode && (
-              <div className="demo-box">
-                DEMO MODE — No Supabase configured<br />
-                Email: admin@xhipment.com<br />
-                Password: admin123
+        {/* Card */}
+        <div style={{ background:'#fff', borderRadius:16, border:'1.5px solid #E2E8F0', padding:'32px 32px 28px', boxShadow:'0 4px 24px rgba(0,0,0,0.06)' }}>
+          <div style={{ fontSize:18, fontWeight:800, color:'#0F172A', marginBottom:6 }}>Admin Sign In</div>
+          <div style={{ fontSize:13, color:'#94A3B8', marginBottom:24 }}>Access the dashboard to manage SOPs, teams and amendments.</div>
+
+          {isDemoMode && (
+            <div style={{ background:'#FFF4EE', border:'1.5px solid #FFD4B5', borderRadius:8, padding:'10px 14px', marginBottom:20, fontSize:12, color:'#C2410C' }}>
+              <div style={{ fontWeight:700, marginBottom:2 }}>🧪 Demo Mode — no Supabase configured</div>
+              <div>Email: admin@xhipment.com · Password: admin123</div>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit}>
+            {error && (
+              <div style={{ background:'#FEF2F2', border:'1.5px solid #FECACA', borderRadius:8, padding:'10px 14px', marginBottom:16, fontSize:13, color:'#DC2626', fontWeight:500 }}>
+                ⚠️ {error}
               </div>
             )}
+            <div style={{ marginBottom:16 }}>
+              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:6, textTransform:'uppercase', letterSpacing:.5 }}>Email Address</label>
+              <input type="email" value={email} onChange={e=>setEmail(e.target.value)} required placeholder="admin@xhipment.com"
+                style={{ width:'100%', padding:'10px 13px' }} />
+            </div>
+            <div style={{ marginBottom:24 }}>
+              <label style={{ display:'block', fontSize:12, fontWeight:600, color:'#374151', marginBottom:6, textTransform:'uppercase', letterSpacing:.5 }}>Password</label>
+              <input type="password" value={password} onChange={e=>setPassword(e.target.value)} required placeholder="••••••••"
+                style={{ width:'100%', padding:'10px 13px' }} />
+            </div>
+            <button type="submit" disabled={loading} style={{
+              width:'100%', padding:'12px', borderRadius:8, border:'none', cursor: loading ? 'not-allowed' : 'pointer',
+              background: loading ? '#94A3B8' : '#FF6B2B', color:'#fff', fontSize:14, fontWeight:700,
+              transition:'background .15s', letterSpacing:.3,
+            }}>
+              {loading ? 'Signing in...' : 'Sign In →'}
+            </button>
+          </form>
+        </div>
 
-            <form onSubmit={handleSubmit}>
-              {error && <div className="login-err">⚠ {error}</div>}
-              <div className="login-field">
-                <label className="login-lbl">EMAIL ADDRESS</label>
-                <input className="login-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="admin@xhipment.com" />
-              </div>
-              <div className="login-field">
-                <label className="login-lbl">PASSWORD</label>
-                <input className="login-input" type="password" value={password} onChange={e => setPassword(e.target.value)} required placeholder="••••••••" />
-              </div>
-              <button className="login-btn" type="submit" disabled={loading}>
-                {loading ? 'SIGNING IN...' : 'SIGN IN →'}
-              </button>
-            </form>
-            <span className="login-back" onClick={() => navigate('/')}>← Back to SOP Portal</span>
-          </div>
+        <div style={{ textAlign:'center', marginTop:20 }}>
+          <span onClick={() => navigate('/')} style={{ fontSize:13, color:'#94A3B8', cursor:'pointer', fontWeight:500 }}>
+            ← Back to SOP Portal
+          </span>
         </div>
       </div>
-    </>
+    </div>
   )
 }
